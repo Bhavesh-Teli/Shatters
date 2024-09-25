@@ -1,13 +1,19 @@
 import React, { useState } from "react";
 import Background from "@/assets/login2.png";
 import Victory from "@/assets/victory.svg";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList,  } from "@/components/ui/tabs";
+import { TabsContent,TabsTrigger } from "@radix-ui/react-tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-clients";
 import { SIGNUP_ROUTES,LOGIN_ROUTES } from "@/utils/constants";
+import { useNavigate } from "react-router-dom";
+import { useAppStore } from "@/store/store";
 const Auth = () => {
+  const navigate=useNavigate();
+  const {setUserInfo}=useAppStore()
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPasswrod, setConfirmPassword] = useState("");
@@ -41,15 +47,30 @@ const Auth = () => {
   const handleLogin = async () => {
     if(validateLogin()){
       const response=await apiClient.post(LOGIN_ROUTES,{email,password},{withCredentials:true});
+      console.log(response.data);
+      if (response.data.user.id) {
+        setUserInfo(response.data.user);
+        if (response.data.user.profileSetup==true) {
+          navigate("/chat");
+        } else {
+          navigate("/profile");
+        }
+      }
+      
       console.log({response});
     }
   };
   const handleSignUp = async () => {
     if (validateSignUp()) {
         try {
-            console.log("Sign Up URL:", `http://localhost:5000${SIGNUP_ROUTES}`);  // Log full URL for debugging
+            // console.log("Sign Up URL:", `http://localhost:5000${SIGNUP_ROUTES}`);  // Log full URL for debugging
             const response = await apiClient.post(SIGNUP_ROUTES, { email, password }, { withCredentials: true });
+            if(response.status === 201){
+              setUserInfo(response.data.user)
+              navigate("/profile");
+            }
             console.log("Sign Up Response:", response.data);
+           
         } catch (error) {
             console.error("Sign Up Error:", error);  // Log detailed error
         }
@@ -71,7 +92,7 @@ const Auth = () => {
             </p>
           </div>
           <div className="flex items-center justify-center w-full">
-            <Tabs className="w-3/4">
+            <Tabs className="w-3/4" defaultValue="login">
               <TabsList className="bg-transparent rounded-none w-full">
                 <TabsTrigger
                   value="login"
