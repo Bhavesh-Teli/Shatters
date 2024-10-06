@@ -2,8 +2,10 @@ import { apiClient } from "@/lib/api-clients";
 import { useAppStore } from "@/store/store";
 import { GET_ALL_MESSAGES_ROUTES } from "@/utils/constants";
 import moment from "moment";
+import { HOST } from "@/utils/constants";
 import React, { useEffect, useRef } from "react";
-
+import { MdFolderZip } from "react-icons/md";
+import { IoMdArrowRoundDown } from "react-icons/io";
 const MessageContainer = () => {
   const scrollRef = useRef();
   const {
@@ -12,7 +14,6 @@ const MessageContainer = () => {
     userInfo,
     selectedChatMessage,
     setSelectedChatMessage,
-    
   } = useAppStore();
   useEffect(() => {
     const getMessages = async () => {
@@ -22,19 +23,16 @@ const MessageContainer = () => {
           { id: selectedChatData._id },
           { withCredentials: true }
         );
-        if(response.data.messages){
+        if (response.data.messages) {
           setSelectedChatMessage(response.data.messages);
         }
       } catch (error) {
         console.log({ error });
       }
-        
-      
     };
-    if(selectedChatData._id){
-      if(selectedChatType === "contact") getMessages();
+    if (selectedChatData._id) {
+      if (selectedChatType === "contact") getMessages();
     }
-   
   }, [selectedChatData, setSelectedChatMessage, selectedChatType]);
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,6 +58,24 @@ const MessageContainer = () => {
       );
     });
   };
+  const downloadFile = async (url) => {
+    const response = await apiClient.get(`${HOST}/${url}`, {
+      responseType: "blob",
+    });
+    const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = urlBlob;
+    link.setAttribute("download", url.split("/").pop());
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(urlBlob);
+  };
+  const checkifImage = (filePath) => {
+    const imageRegex =
+      /\.(jpg|jpeg|png|gif|bmp|tiff|tif|webp|svg|ico|heic|heif)$/i;
+    return imageRegex.test(filePath);
+  };
   const renderDMMessages = (message) => (
     <div
       className={`${
@@ -75,6 +91,38 @@ const MessageContainer = () => {
           } border inline-block p-4 rounded my-1 max-w-[50%] break-words`}
         >
           {message.content}
+        </div>
+      )}
+      {message.messageType === "file" && (
+        <div
+          className={`${
+            message.sender !== selectedChatData._id
+              ? "bg-[#8417ff]/5 text-[#8417ff]/90  border-[#8417ff]/50"
+              : "bg-[#2a2b33]/5 text-white/90  border-[#ffffff]/20"
+          } border inline-block p-4 rounded my-1 max-w-[50%] break-words`}
+        >
+          {checkifImage(message.fileUrl) ? (
+            <div className="cursor-pointer">
+              <img
+                src={`${HOST}/${message.fileUrl}`}
+                height={300}
+                width={300}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-4">
+              <span className="text-white/8 text-3xl bg-black/20 rounded-full p-3">
+                <MdFolderZip />
+              </span>
+              <span>{message.fileUrl.split("/").pop()}</span>
+              <span
+                className="bg-blac/20 p-3 text-2xl rounded-full hover:bg-black/50 cursor-pointer transition-all duration-300"
+                onClick={() => downloadFile(message.fileUrl)}
+              >
+                <IoMdArrowRoundDown />
+              </span>
+            </div>
+          )}
         </div>
       )}
       <div className="text-xs text-gray-600">

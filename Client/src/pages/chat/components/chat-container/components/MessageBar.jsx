@@ -1,5 +1,7 @@
 import { useSocket } from "@/context/SocketContext";
+import { apiClient } from "@/lib/api-clients";
 import { useAppStore } from "@/store/store";
+import { Upload_File_Route } from "@/utils/constants";
 import EmojiPicker from "emoji-picker-react";
 import React, { useEffect, useRef, useState } from "react";
 import { GrAttachment } from "react-icons/gr";
@@ -9,6 +11,7 @@ import { Socket } from "socket.io-client";
 
 const MessageBar = () => {
   const emojiRef = useRef();
+  const fileInputRef = useRef();
   const { selectedChatType, selectedChatData, userInfo } = useAppStore();
   const socket = useSocket();
   const [message, setMessage] = useState("");
@@ -31,7 +34,7 @@ const MessageBar = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;  // Prevent sending empty messages
+    if (!message.trim()) return; // Prevent sending empty messages
     try {
       if (selectedChatType === "contact") {
         socket.emit("sendMessage", {
@@ -47,7 +50,37 @@ const MessageBar = () => {
       console.error("Failed to send message:", error);
     }
   };
-  
+  const handleAttachmentClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  const handleAttachmentChange = async (event) => {
+    try {
+      const file = event.target.files[0];
+      if (file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await apiClient.post(Upload_File_Route, formData, {
+          withCredentials: true,
+        });
+        if (response.status === 200 && response.data) {
+          if (selectedChatType === "contact") {
+            socket.emit("sendMessage", {
+              sender: userInfo.id,
+              content: undefined,
+              recipient: selectedChatData._id,
+              messageType: "file",
+              fileUrl: response.data.filePath,
+            });
+          }
+        }
+      }
+      console.log({ file });
+    } catch (error) {
+      console.error("Failed to send file:", error);
+    }
+  };
   return (
     <div className="h-[10vh] bg-[#1c1d25] flex justify-center items-center px-8 mb-6 gap-6">
       <div className="flex-1 flex bg-[#2a2b33] rounded-md items-center gap-5 pr-5">
@@ -58,9 +91,18 @@ const MessageBar = () => {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
-        <button className="text-neutral-500 focus:outline-none focus:text-white duration-300 transition-all">
+        <button
+          className="text-neutral-500 focus:outline-none focus:text-white duration-300 transition-all"
+          onClick={handleAttachmentClick}
+        >
           <GrAttachment className="text-2xl" />
         </button>
+        <input
+          type="file"
+          className="hidden"
+          ref={fileInputRef}
+          onChange={handleAttachmentChange}
+        />
         <div className="relative">
           <button
             className="text-neutral-500 focus:outline-none focus:text-white duration-300 transition-all"
