@@ -2,12 +2,13 @@ import React, { useEffect } from "react";
 import ProfileInfo from "./components/ProfileInfo";
 import NewDm from "./components/NewDm";
 import { apiClient } from "@/lib/api-clients";
-import { GET_DM_CONTACTS_ROUTE } from "@/utils/constants";
+import { GET_DM_CONTACTS_ROUTE, GET_USER_CHANNELS_ROUTE } from "@/utils/constants";
 import { useAppStore } from "@/store/store";
 import Contactlist from "@/components/Contactlist";
-import { getColor } from "@/lib/utils";
+
+import CreateChannel from "./components/CreateChannel";
 const ContactsContainer = () => {
-  const {setDirectMessageContacts,directMessageContacts}=useAppStore();
+  const {setDirectMessageContacts,directMessageContacts,channels,setChannels}=useAppStore();
   useEffect(() => {
     const getContacts = async () => {
       const response = await apiClient.get(GET_DM_CONTACTS_ROUTE, {
@@ -15,10 +16,22 @@ const ContactsContainer = () => {
       });
       if (response.data.contacts) {
         setDirectMessageContacts(response.data.contacts);
+
       }
     };
+    const getChannels = async () => {  
+      const response = await apiClient.get(GET_USER_CHANNELS_ROUTE, {
+        withCredentials: true,
+      });
+      if (response.data.channels ) {
+        setChannels(response.data.channels);
+      }
+    };
+    
     getContacts();
-  },[]);
+    getChannels();
+    
+  },[setChannels,setDirectMessageContacts]);
 
   return (
     <div className="relative md:w-[35vw] lg:w-[30vw] xl:w-[20vw] bg-[#1b1c24] border-r-2 border-[#2f303b] w-full">
@@ -37,6 +50,10 @@ const ContactsContainer = () => {
       <div className="my-5">
         <div className="flex items-center justify-between pr-10">
           <Title text="Channels" />
+          <CreateChannel/>
+        </div>
+        <div className="max-h-[38vh] overflow-y-auto scrollbar-hidden">
+          <Contactlist contacts={channels} isChannel={true}/>
         </div>
       </div>
       <ProfileInfo />
